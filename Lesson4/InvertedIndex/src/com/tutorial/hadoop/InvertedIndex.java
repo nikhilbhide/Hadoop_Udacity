@@ -1,6 +1,10 @@
 package com.tutorial.hadoop;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -53,18 +57,16 @@ public class InvertedIndex {
 		 */
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			if(key.toString().equals("fantastic"))
-				context.write(key, getSum(values));
+				context.write(key, new Text(getSum(values).toString()));
 			else if (key.toString().equals("fantastically")) {
-				context.write(key, getNodeList(values));
+				context.write(key, new Text(getNodeList(values)));
 			}
 		}
 
-		private Text getSum(Iterable<Text> values) {
-			long sum = 0;
-			for (Text val : values) {
-				sum+= Long.parseLong(val.toString());			
-			}
-			return new Text(String.valueOf(sum));
+		private Long getSum(Iterable<Text> values) {
+			return StreamSupport.stream(values.spliterator(), false)
+					.mapToLong(t-> Long.parseLong(t.toString()))
+					.sum();
 		}
 	}
 
@@ -74,12 +76,10 @@ public class InvertedIndex {
 	 * @param values The list of values of type {@link Text}ata
 	 * @return Concatenated list of node ids and count for word occurence
 	 */
-	private static Text getNodeList(Iterable<Text> values) {
-		String nodeIds = "";
-		for (Text val : values) {
-			nodeIds = nodeIds.concat(",").concat(val.toString());
-		}
-		return new Text(nodeIds);			
+	private static String getNodeList(Iterable<Text> values) {
+		return StreamSupport.stream(values.spliterator(), false)
+			   .map(value->value.toString())
+			   .collect(Collectors.joining(","));
 	}
 
 	/**

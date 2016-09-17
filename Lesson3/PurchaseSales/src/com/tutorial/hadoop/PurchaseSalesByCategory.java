@@ -2,6 +2,11 @@ package com.tutorial.hadoop;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.StreamSupport;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -42,18 +47,10 @@ public class PurchaseSalesByCategory {
 	}
 
 	private static BigDecimal getMax(Iterable<Text> values) {
-		BigDecimal maxValue = null;
-		for (Text value : values) {
-			if(maxValue==null)
-				maxValue = new BigDecimal(value.toString());
-			else {
-				BigDecimal currentValue = new BigDecimal(value.toString());
-				maxValue = maxValue.max(currentValue);
-			}
-		}
-		if(maxValue==null) 
-			maxValue = new BigDecimal(0);
-		return maxValue;
+		return StreamSupport.stream(values.spliterator(), false)
+				.map(t-> new BigDecimal(t.toString()))
+				.max(Comparator.naturalOrder())
+				.get();
 	}
 
 	public static void main(String[] args) throws Exception {

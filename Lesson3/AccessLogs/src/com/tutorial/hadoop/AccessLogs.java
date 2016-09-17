@@ -1,6 +1,8 @@
 package com.tutorial.hadoop;
 
 import java.io.IOException;
+import java.util.stream.StreamSupport;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -104,10 +106,9 @@ public class AccessLogs {
 	 * @return sum The sum of all values
 	 */
 	private static LongWritable getSum(Iterable<LongWritable> values) {
-		long sum = 0;
-		for (LongWritable val : values) {
-			sum += val.get();
-		}
+		long sum = StreamSupport.stream(values.spliterator(), false)
+				.mapToLong(t-> Long.parseLong(t.toString()))
+				.sum();
 		return new LongWritable(sum);			
 	}
 

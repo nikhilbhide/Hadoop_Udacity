@@ -5,7 +5,11 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -53,11 +57,9 @@ public class PurchaseSalesJob {
 		}
 
 		private String getDayFromDate(String dateValue) throws ParseException {
-			Date date = null;
 			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-			date =  dateFormat.parse(dateValue);
 			dateFormat = new SimpleDateFormat("EEEEE");
-			return dateFormat.format(date);
+			return dateFormat.format(dateFormat.parse(dateValue));
 		}
 	}
 
@@ -72,42 +74,24 @@ public class PurchaseSalesJob {
 
 	public static class SumOfPricePerWeekDayReducer extends Reducer<Text,Text,Text,Text> {
 		public void reduce(Text key, Iterable<Text> values,	Context context) throws IOException, InterruptedException {
-			//if(!key.toString().equals("Sunday") && !key.toString().equals("Saturday"))
 			context.write(key, new Text(getSum(values).toString()));
 		}
 	}
 
-	private static BigDecimal getMax(Iterable<Text> values) {
-		BigDecimal maxValue = null;
-		for (Text value : values) {
-			if(maxValue==null)
-				maxValue = new BigDecimal(value.toString());
-			else {
-				BigDecimal currentValue = new BigDecimal(value.toString());
-				maxValue = maxValue.max(currentValue);
-			}
-		}
-		if(maxValue==null) 
-			maxValue = new BigDecimal(0);
-		return maxValue;
-	}
-
 	private static BigDecimal getSum(Iterable<Text> values) {
-		BigDecimal sum = new BigDecimal(0);
-		int totalNum = 0;
-		for (Text value : values) {
-			sum = sum.add(new BigDecimal(value.toString()));
-		}
-		return sum;
+		return StreamSupport.stream(values.spliterator(), false)
+				.map(t-> new BigDecimal(t.toString()))
+				.max(Comparator.naturalOrder())
+				.get();
 	}
+	
 	private static BigDecimal getMean(Iterable<Text> values) {
-		BigDecimal sum = new BigDecimal(0);
-		int totalNum = 0;
-		for (Text value : values) {
-			sum = sum.add(new BigDecimal(value.toString()));
-			totalNum++;
-		}
-		return sum.divide(new BigDecimal(totalNum),MathContext.DECIMAL128);
+		List<BigDecimal> numList = StreamSupport.stream(values.spliterator(), false)
+				.map(t-> new BigDecimal(t.toString()))
+				.collect(Collectors.toList());
+		BigDecimal sum = numList.stream()
+					            .reduce(BigDecimal.ZERO, (BigDecimal::add));
+		return sum.divide(new BigDecimal(numList.size()),MathContext.DECIMAL128);
 	}
 
 	public static void main(String[] args) throws Exception {
